@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Violin Tone Generator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    select, button {
+      font-size: 1.2em;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎻 Violin Tone Generator</h1>
+  <label>Note 1:
+    <select id="note1"></select>
+  </label>
+  <label>Note 2:
+    <select id="note2"></select>
+  </label>
+  <label>
+    Temperament:
+    <select id="temperament">
+      <option value="equal">Equal Temperament</option>
+      <option value="just">Just Intonation</option>
+    </select>
+  </label>
+  <label>
+    A4 Tuning:
+    <select id="a4tuning">
+      <option value="440">A4 = 440 Hz</option>
+      <option value="442">A4 = 442 Hz</option>
+    </select>
+  </label>
+  <br />
+  <button onclick="playTones()">Play</button>
+  <button onclick="stopTones()">Stop</button>
+
+  <script>
+    const context = new (window.AudioContext || window.webkitAudioContext)();
+    let oscillators = [];
+
+    const baseEqualFrequencies = {
+      "G3": -14,
+      "G#3/Ab3": -13,
+      "A3": -12,
+      "A#3/Bb3": -11,
+      "B3": -10,
+      "C4": -9,
+      "C#4/Db4": -8,
+      "D4": -7,
+      "D#4/Eb4": -6,
+      "E4": -5,
+      "F4": -4,
+      "F#4/Gb4": -3,
+      "G4": -2,
+      "G#4/Ab4": -1,
+      "A4": 0,
+      "A#4/Bb4": 1,
+      "B4": 2,
+      "C5": 3,
+      "C#5/Db5": 4,
+      "D5": 5,
+      "D#5/Eb5": 6,
+      "E5": 7,
+      "F5": 8,
+      "F#5/Gb5": 9,
+      "G5": 10,
+      "G#5/Ab5": 11,
+      "A5": 12
+    };
+
+    const justRatios = {
+      "m2": 16/15,
+      "M2": 9/8,
+      "m3": 6/5,
+      "M3": 5/4,
+      "P4": 4/3,
+      "P5": 3/2,
+      "M6": 5/3,
+      "m7": 9/5,
+      "M7": 15/8,
+      "octave": 2
+    };
+
+    function populateNotes() {
+      const note1 = document.getElementById('note1');
+      const note2 = document.getElementById('note2');
+
+      // None option for Note 2
+      const noneOption = document.createElement('option');
+      noneOption.value = "none";
+      noneOption.text = "None";
+      note2.appendChild(noneOption);
+
+      for (let note in baseEqualFrequencies) {
+        const option1 = document.createElement('option');
+        option1.value = note;
+        option1.text = note;
+        note1.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = note;
+        option2.text = note;
+        note2.appendChild(option2);
+      }
+      note1.value = "A4";
+      note2.value = "none";
+    }
+
+    function getFrequency(semitoneDiff, a4Freq) {
+      return a4Freq * Math.pow(2, semitoneDiff / 12);
+    }
+
+    function playTones() {
+      stopTones();
+      const temperament = document.getElementById('temperament').value;
+      const a4Freq = parseFloat(document.getElementById('a4tuning').value);
+      const n1 = document.getElementById('note1').value;
+      const n2 = document.getElementById('note2').value;
+
+      const semitone1 = baseEqualFrequencies[n1];
+      const freq1 = getFrequency(semitone1, a4Freq);
+
+      const osc1 = context.createOscillator();
+      osc1.frequency.value = freq1;
+      osc1.type = 'sine';
+      osc1.connect(context.destination);
+      osc1.start();
+      oscillators.push(osc1);
+
+      if (n2 !== "none") {
+        const semitone2 = baseEqualFrequencies[n2];
+        let freq2 = getFrequency(semitone2, a4Freq);
+
+        if (temperament === 'just') {
+          const intervalRatio = freq2 / freq1;
+          let closest = null;
+          let minDiff = Infinity;
+          for (let int in justRatios) {
+            let diff = Math.abs(intervalRatio - justRatios[int]);
+            if (diff < minDiff) {
+              closest = int;
+              minDiff = diff;
+            }
+          }
+          freq2 = freq1 * justRatios[closest];
+        }
+
+        const osc2 = context.createOscillator();
+        osc2.frequency.value = freq2;
+        osc2.type = 'sine';
+        osc2.connect(context.destination);
+        osc2.start();
+        oscillators.push(osc2);
+      }
+    }
+
+    function stopTones() {
+      oscillators.forEach(osc => osc.stop());
+      oscillators = [];
+    }
+
+    populateNotes();
+  </script>
+</body>
+</html>
